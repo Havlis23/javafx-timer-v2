@@ -15,6 +15,7 @@ import javafx.scene.transform.Translate;
 import javafx.util.Duration;
 
 import java.net.URL;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 public class HelloController implements Initializable, Runnable {
@@ -46,6 +47,8 @@ public class HelloController implements Initializable, Runnable {
 
     private boolean running = false;
     private int seconds;
+    private boolean paused = false;
+    Object monitor = new Object();
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -74,8 +77,9 @@ public class HelloController implements Initializable, Runnable {
     }
 
     private void loadTime() {
-     seconds = comboHour.getValue() * 3600 + comboMin.getValue() * 60 + comboSec.getValue();
+        seconds = comboHour.getValue() * 3600 + comboMin.getValue() * 60 + comboSec.getValue();
     }
+
     public void stopCounter(ActionEvent event) {
         slideDown();
         running = false;
@@ -103,36 +107,51 @@ public class HelloController implements Initializable, Runnable {
     public void run() {
         long time = System.currentTimeMillis() + 1000;
         while (running) {
-            if (System.currentTimeMillis() > time) {
-                Platform.runLater(new Runnable() {
-                    @Override
-                    public void run() {
-                        updateTime();
+            synchronized (monitor) {
+                if (paused) {
+                    try {
+                        monitor.wait();
+                    } catch (InterruptedException e) {
+                        System.err.println(e.getMessage());
                     }
-                });
-                if (seconds == 0) running = false;
-                else seconds--;
-                time = System.currentTimeMillis() + 1000;
+                }
+                if (System.currentTimeMillis() > time) {
+                    Platform.runLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            updateTime();
+                        }
+                    });
+                    if (seconds == 0) running = false;
+                    else seconds--;
+                    time = System.currentTimeMillis() + 1000;
 
+                }
             }
         }
     }
+
     private void updateTime() {
         System.out.println(seconds--);
         short hours = (short) (seconds / 3600);
-        hourLabel.setText((hours < 10) ? "0" + hours: "" + hours);
+        hourLabel.setText((hours < 10) ? "0" + hours : "" + hours);
         short minutes = (short) ((seconds % 3600) / 60);
-        minutesLabel.setText((minutes < 10) ? "0" + minutes: "" + minutes);
+        minutesLabel.setText((minutes < 10) ? "0" + minutes : "" + minutes);
         short sec = (short) (seconds % 60);
-        secondsLabel.setText((sec < 10) ? "0" + sec: "" + sec);
+        secondsLabel.setText((sec < 10) ? "0" + sec : "" + sec);
     }
 
     public void pauseCounter(ActionEvent event) {
-
+        if (!paused) paused = true;
+        else {
+            synchronized (monitor) {
+                monitor.notify();
+                paused = false;
+            }
+        }
     }
 
-    @FXML
     public void resetCounter(ActionEvent event) {
-    loadTime();
+        loadTime();
     }
 }
