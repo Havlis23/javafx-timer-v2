@@ -11,6 +11,8 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.transform.Translate;
 import javafx.util.Duration;
 
@@ -49,20 +51,23 @@ public class HelloController implements Initializable, Runnable {
     private int seconds;
     private boolean paused = false;
     Object monitor = new Object();
+    MediaPlayer mp;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        ObservableList<Integer> hodinyList = FXCollections.observableArrayList();
-        ObservableList<Integer> minutyASekundyList = FXCollections.observableArrayList();
+        ObservableList<Integer> hoursList = FXCollections.observableArrayList();
+        ObservableList<Integer> minutesAndSecondsList = FXCollections.observableArrayList();
         for (int i = 0; i < 60; i++) {
-            if (i >= 0 && i < 24) hodinyList.add(new Integer(i));
-            minutyASekundyList.add(new Integer(i));
+            if (i < 24) {
+                hoursList.add(i);
+            }
+            minutesAndSecondsList.add(i);
         }
-        comboHour.setItems(hodinyList);
+        comboHour.setItems(hoursList);
         comboHour.setValue(0);
-        comboMin.setItems(minutyASekundyList);
+        comboMin.setItems(minutesAndSecondsList);
         comboMin.setValue(0);
-        comboSec.setItems(minutyASekundyList);
+        comboSec.setItems(minutesAndSecondsList);
         comboSec.setValue(0);
     }
 
@@ -83,6 +88,10 @@ public class HelloController implements Initializable, Runnable {
     public void stopCounter(ActionEvent event) {
         slideDown();
         running = false;
+        synchronized (monitor) {
+                monitor.notify();
+                paused = false;
+            }
     }
 
     public void slideUp() {
@@ -122,7 +131,13 @@ public class HelloController implements Initializable, Runnable {
                             updateTime();
                         }
                     });
-                    if (seconds == 0) running = false;
+                    if (seconds == 0) {
+                        Media bell = null;
+                        bell = new Media(Objects.requireNonNull(getClass().getResource("/com/davidhavel/casovac9000/sounds/Goofy Ahh Piano.mp3")).toString());
+                        mp = new MediaPlayer(bell);
+                        mp.play();
+                        running = false;
+                    }
                     else seconds--;
                     time = System.currentTimeMillis() + 1000;
 
@@ -132,7 +147,7 @@ public class HelloController implements Initializable, Runnable {
     }
 
     private void updateTime() {
-        System.out.println(seconds--);
+        System.out.println(seconds); // takto to pocitalo kazdou druhou sekundu, vereseno: System.out.println(seconds--);
         short hours = (short) (seconds / 3600);
         hourLabel.setText((hours < 10) ? "0" + hours : "" + hours);
         short minutes = (short) ((seconds % 3600) / 60);
