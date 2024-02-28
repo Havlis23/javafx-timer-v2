@@ -117,7 +117,6 @@ public class HelloController implements Initializable, Runnable {
             }
         }
     }
-
     private void updateTime() {
         System.out.println(seconds--);
         short hours = (short) (seconds / 3600);
