@@ -2,18 +2,17 @@ package com.davidhavel.casovac9000;
 
 import javafx.animation.TranslateTransition;
 import javafx.application.Platform;
-import javafx.beans.Observable;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
+import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
-import javafx.scene.transform.Translate;
 import javafx.util.Duration;
 
 import java.net.URL;
@@ -27,6 +26,7 @@ public class HelloController implements Initializable, Runnable {
 
     @FXML
     private ComboBox<Integer> comboMin;
+
     @FXML
     private ComboBox<Integer> comboSec;
 
@@ -45,16 +45,31 @@ public class HelloController implements Initializable, Runnable {
     @FXML
     private Label secondsLabel;
 
-    private Thread t;
+    @FXML
+    private Button startButton;
 
+    @FXML
+    private Button stopButton;
+
+    @FXML
+    private Button pauseButton;
+
+    @FXML
+    private Button resetButton;
+
+    private Thread t;
     private boolean running = false;
     private int seconds;
     private boolean paused = false;
-    Object monitor = new Object();
-    MediaPlayer mp;
+    private Object monitor = new Object();
+    private MediaPlayer mp;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        initializeComboBoxes();
+    }
+
+    private void initializeComboBoxes() {
         ObservableList<Integer> hoursList = FXCollections.observableArrayList();
         ObservableList<Integer> minutesAndSecondsList = FXCollections.observableArrayList();
         for (int i = 0; i < 60; i++) {
@@ -72,11 +87,10 @@ public class HelloController implements Initializable, Runnable {
     }
 
     public void startCounter(ActionEvent event) {
-        slideUp();
+        animateSlide(settingsPage, true);
         t = new Thread(this);
         t.setDaemon(true);
         running = true;
-
         loadTime();
         t.start();
     }
@@ -86,30 +100,24 @@ public class HelloController implements Initializable, Runnable {
     }
 
     public void stopCounter(ActionEvent event) {
-        slideDown();
+        animateSlide(settingsPage, false);
         running = false;
         synchronized (monitor) {
-                monitor.notify();
-                paused = false;
-            }
+            monitor.notify();
+            paused = false;
+        }
     }
 
-    public void slideUp() {
-        TranslateTransition transition1 = new TranslateTransition();
-        transition1.setDuration(Duration.millis(800));
-        transition1.setToX(0);
-        transition1.setToY(-380);
-        transition1.setNode(settingsPage);
-        transition1.play();
+    private void animateSlide(AnchorPane node, boolean slideUp) {
+        TranslateTransition transition = createTranslateTransition(node, slideUp);
+        transition.play();
     }
 
-    public void slideDown() {
-        TranslateTransition transition1 = new TranslateTransition();
-        transition1.setDuration(Duration.millis(800));
-        transition1.setToX(0);
-        transition1.setToY(0);
-        transition1.setNode(settingsPage);
-        transition1.play();
+    private TranslateTransition createTranslateTransition(AnchorPane node, boolean slideUp) {
+        TranslateTransition transition = new TranslateTransition(Duration.millis(800), node);
+        transition.setToX(0);
+        transition.setToY(slideUp ? -380 : 0);
+        return transition;
     }
 
     @Override
@@ -125,25 +133,23 @@ public class HelloController implements Initializable, Runnable {
                     }
                 }
                 if (System.currentTimeMillis() > time) {
-                    Platform.runLater(new Runnable() {
-                        @Override
-                        public void run() {
-                            updateTime();
-                        }
-                    });
+                    Platform.runLater(this::updateTime);
                     if (seconds == 0) {
-                        Media bell = null;
-                        bell = new Media(Objects.requireNonNull(getClass().getResource("/com/davidhavel/casovac9000/sounds/Goofy Ahh Piano.mp3")).toString());
-                        mp = new MediaPlayer(bell);
-                        mp.play();
+                        playTimesUpSound();
                         running = false;
+                    } else {
+                        seconds--;
                     }
-                    else seconds--;
                     time = System.currentTimeMillis() + 1000;
-
                 }
             }
         }
+    }
+
+    private void playTimesUpSound() {
+        Media bell = new Media(Objects.requireNonNull(getClass().getResource("/com/davidhavel/casovac9000/sounds/timesUp.mp3")).toString());
+        mp = new MediaPlayer(bell);
+        mp.play();
     }
 
     private void updateTime() {
@@ -157,8 +163,9 @@ public class HelloController implements Initializable, Runnable {
     }
 
     public void pauseCounter(ActionEvent event) {
-        if (!paused) paused = true;
-        else {
+        if (!paused) {
+            paused = true;
+        } else {
             synchronized (monitor) {
                 monitor.notify();
                 paused = false;
