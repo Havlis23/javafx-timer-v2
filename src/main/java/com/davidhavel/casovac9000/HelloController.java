@@ -22,7 +22,6 @@ public class HelloController implements Initializable {
 
     @FXML
     private ComboBox<Integer> comboMin;
-
     @FXML
     private ComboBox<Integer> comboSec;
 
